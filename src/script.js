@@ -10,6 +10,19 @@ import CANNON, { Vec3 } from "cannon";
 const gui = new dat.GUI();
 
 /**
+ * Sound
+ */
+const hitSound = new Audio("/sounds/hit.mp3");
+const playSound = (collision) => {
+  const impactStrength = collision.contact.getImpactVelocityAlongNormal();
+  if (impactStrength >= 1) {
+    // normilize impact strength to [0.. 1]
+    hitSound.volume = (impactStrength - 0) / (15 - 0);
+    hitSound.currentTime = 0;
+    hitSound.play();
+  }
+};
+/**
  * Base
  */
 // Canvas
@@ -47,6 +60,8 @@ gui.add(material, "roughness", 0, 1, 0.001);
  */
 // WORLD
 const world = new CANNON.World();
+world.broadphase = new CANNON.SAPBroadphase(world);
+world.allowSleep = true;
 world.gravity.set(0, -9.82, 0);
 
 // Materials
@@ -214,6 +229,7 @@ const createBoxes = (height, width, depth, position) => {
     shape: shape,
     material: defaultMaterial,
   });
+  body.addEventListener("collide", playSound);
   world.addBody(body);
 
   return { threeObject: mesh, physicObject: body };
@@ -241,6 +257,16 @@ debugObj.createBoxes = () => {
   );
 };
 gui.add(debugObj, "createBoxes");
+
+debugObj.reset = () => {
+  objects.forEach((object) => {
+    object.physicObject.removeEventListener("collide", playSound);
+    world.removeBody(object.physicObject);
+
+    scene.remove(object.threeObject);
+  });
+};
+gui.add(debugObj, "reset");
 
 // objects.push(
 //   createSphere(0.5, { x: 0, y: 3, z: 0 }),
